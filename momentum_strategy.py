@@ -4,6 +4,10 @@ from pathlib import Path
 import warnings
 warnings.filterwarnings('ignore')
 
+def load_commodities_data(data_dir='data/commodities'):
+    """Load and synchronize commodity parquet files into a single DataFrame with Close prices."""
+    return load_all_data(data_dir)
+
 def load_all_data(data_dir='data'):
     """Load and synchronize all parquet files into a single DataFrame with Close prices."""
     data_path = Path(data_dir)
@@ -43,6 +47,12 @@ def calculate_monthly_returns(prices_df):
     monthly_returns = monthly_prices.pct_change()
     return monthly_returns
 
+def calculate_weekly_returns(prices_df):
+    """Convert daily prices to weekly returns using Monday resampling."""
+    weekly_prices = prices_df.resample('W-MON').last()
+    weekly_returns = weekly_prices.pct_change()
+    return weekly_returns
+
 def calculate_momentum_signals(monthly_returns, lookback_months=12):
     """Calculate cumulative return signals with proper shift to avoid look-ahead bias."""
     def rolling_cumulative_return(x):
@@ -60,6 +70,23 @@ def calculate_momentum_signals(monthly_returns, lookback_months=12):
     
     return shifted_signals
 
+def calculate_weekly_momentum_signals(weekly_returns, lookback_weeks=1):
+    """Calculate weekly momentum signals with proper shift to avoid look-ahead bias."""
+    def rolling_cumulative_return(x):
+        if len(x) < 1:
+            return np.nan
+        return (1 + x).prod() - 1  # Cumulative return over the period
+    
+    momentum_scores = weekly_returns.rolling(window=lookback_weeks).apply(
+        rolling_cumulative_return, raw=True
+    )
+    
+    # CRITICAL: Shift signals by 1 period to avoid look-ahead bias
+    # Monday t uses signals calculated on week t-1
+    shifted_signals = momentum_scores.shift(1)
+    
+    return shifted_signals
+
 def calculate_risk_parity_weights(selected_assets, monthly_returns, date, lookback_months=12):
     """Calculate risk parity weights for selected assets."""
     # Get historical returns for selected assets up to the rebalancing date
@@ -67,6 +94,27 @@ def calculate_risk_parity_weights(selected_assets, monthly_returns, date, lookba
     start_date = monthly_returns.index[max(0, monthly_returns.index.get_loc(date) - lookback_months)]
     
     historical_returns = monthly_returns.loc[start_date:end_date, selected_assets]
+    
+    # Calculate volatilities (standard deviation)
+    volatilities = historical_returns.std()
+    
+    # Handle edge cases
+    volatilities = volatilities.fillna(1.0)  # If no data, use equal weight
+    volatilities = volatilities.replace(0.0, volatilities[volatilities > 0].min() if (volatilities > 0).any() else 1.0)
+    
+    # Calculate inverse volatility weights
+    inverse_vol = 1.0 / volatilities
+    risk_parity_weights = inverse_vol / inverse_vol.sum()
+    
+    return risk_parity_weights
+
+def calculate_weekly_risk_parity_weights(selected_assets, weekly_returns, date, lookback_weeks=4):
+    """Calculate risk parity weights for selected assets using weekly data."""
+    # Get historical returns for selected assets up to the rebalancing date
+    end_date = date
+    start_date = weekly_returns.index[max(0, weekly_returns.index.get_loc(date) - lookback_weeks)]
+    
+    historical_returns = weekly_returns.loc[start_date:end_date, selected_assets]
     
     # Calculate volatilities (standard deviation)
     volatilities = historical_returns.std()
@@ -110,6 +158,22 @@ def backtest_strategy(prices_df, weights_df):
     
     # Calculate portfolio returns
     portfolio_returns = (aligned_weights.shift(1) * monthly_returns).sum(axis=1)
+    
+    # Calculate cumulative returns
+    portfolio_cumulative = (1 + portfolio_returns).cumprod()
+    
+    return portfolio_returns, portfolio_cumulative
+
+def backtest_weekly_strategy(prices_df, weights_df):
+    """Backtest the momentum strategy with weekly rebalancing."""
+    weekly_prices = prices_df.resample('W-MON').last()
+    weekly_returns = weekly_prices.pct_change()
+    
+    # Align weights and returns
+    aligned_weights = weights_df.reindex(weekly_returns.index, method='ffill')
+    
+    # Calculate portfolio returns
+    portfolio_returns = (aligned_weights.shift(1) * weekly_returns).sum(axis=1)
     
     # Calculate cumulative returns
     portfolio_cumulative = (1 + portfolio_returns).cumprod()
