@@ -44,14 +44,14 @@ def calculate_monthly_returns(prices_df):
     return monthly_returns
 
 def calculate_momentum_signals(monthly_returns, lookback_months=12):
-    """Calculate 12-month Sharpe ratio signals with proper shift to avoid look-ahead bias."""
-    def rolling_sharpe(x):
-        if len(x) < 2 or x.std() == 0:
+    """Calculate cumulative return signals with proper shift to avoid look-ahead bias."""
+    def rolling_cumulative_return(x):
+        if len(x) < 1:
             return np.nan
-        return x.mean() / x.std() * np.sqrt(12)  # Annualized Sharpe ratio
+        return (1 + x).prod() - 1  # Cumulative return over the period
     
     momentum_scores = monthly_returns.rolling(window=lookback_months).apply(
-        rolling_sharpe, raw=True
+        rolling_cumulative_return, raw=True
     )
     
     # CRITICAL: Shift signals by 1 period to avoid look-ahead bias
@@ -89,7 +89,7 @@ def select_top_quantile(momentum_signals, monthly_returns, quantile=0.25):
         valid_signals = momentum_signals.loc[date].dropna()
         
         if len(valid_signals) > 0:
-            # Select top performers based on Sharpe ratio
+            # Select top performers based on cumulative returns
             n_select = max(1, int(len(valid_signals) * quantile))
             top_assets = valid_signals.nlargest(n_select).index
             
