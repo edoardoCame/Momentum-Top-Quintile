@@ -87,6 +87,28 @@ def calculate_weekly_momentum_signals(weekly_returns, lookback_weeks=1):
     
     return shifted_signals
 
+def calculate_explosivity_filter(weekly_returns, lookback_weeks=4, threshold=1.5):
+    """Calculate explosivity filter based on returns z-score - no lookahead."""
+    explosivity_scores = pd.DataFrame(0.0, index=weekly_returns.index, columns=weekly_returns.columns)
+    
+    for col in weekly_returns.columns:
+        series = weekly_returns[col]
+        
+        # Rolling z-score del return corrente vs historical volatility
+        rolling_mean = series.rolling(window=lookback_weeks).mean()
+        rolling_std = series.rolling(window=lookback_weeks).std()
+        
+        # Z-score = (current_return - rolling_mean) / rolling_std
+        z_scores = (series - rolling_mean) / rolling_std
+        
+        # Filtro esplosività: solo se z-score > threshold (mossa significativa)
+        explosive_filter = (z_scores > threshold).astype(float)
+        
+        # Shift per evitare lookahead - settimana t usa filtro calcolato su t-1
+        explosivity_scores[col] = explosive_filter.shift(1)
+    
+    return explosivity_scores
+
 def calculate_risk_parity_weights(selected_assets, monthly_returns, date, lookback_months=12):
     """Calculate risk parity weights for selected assets."""
     # Get historical returns for selected assets up to the rebalancing date
