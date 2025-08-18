@@ -75,22 +75,9 @@ DEFAULT_TICKERS = [
     "NZDCHF=X",
     "CHFJPY=X",
 
-    # Bond ETFs - Treasury
+    # Bond ETFs - Treasury (Only TLT and EDV for long duration exposure)
     "TLT",   # iShares 20+ Year Treasury Bond ETF
-    "IEF",   # iShares 7-10 Year Treasury Bond ETF
-    "SHY",   # iShares 1-3 Year Treasury Bond ETF
-    "GOVT",  # iShares U.S. Treasury Bond ETF
-    "BIL",   # SPDR Bloomberg Barclays 1-3 Month T-Bill ETF
-    "SCHR",  # Schwab Intermediate-Term Treasury ETF
-    "SCHQ",  # Schwab Long Treasury ETF
-
-    # Bond ETFs - Corporate & Aggregate
-    "AGG",   # iShares Core US Aggregate Bond ETF
-    "BND",   # Vanguard Total Bond Market ETF
-    "LQD",   # iShares iBoxx $ Investment Grade Corporate Bond ETF
-    "VCIT",  # Vanguard Intermediate-Term Corporate Bond ETF
-    "VCSH",  # Vanguard Short-Term Corporate Bond ETF
-    "HYG",   # iShares iBoxx $ High Yield Corporate Bond ETF
+    "EDV",   # Vanguard Extended Duration Treasury ETF (25+ years)
 
     # US Stock Market Index ETFs
     "SPY",   # SPDR S&P 500 ETF Trust
