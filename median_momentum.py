@@ -185,7 +185,7 @@ def run(L=63, variant='hybrid'):
     for k, v in stats.items():
         print(f"{k}: {v}")
 
-    return dict(prices=prices, returns=returns, s_t=s_t, cumret=cumret, pos=pos, weights=weights, stats=stats)
+    return dict(prices=prices, returns=returns, s_t=s_t, cumret=cumret, pos=pos, weights=weights, strategy_returns=strat_ret, stats=stats)
 
 
 if __name__ == '__main__':
